@@ -92,6 +92,12 @@ citation-assistant/
     └── quality_metrics.md # 质量指标说明
 ```
 
+## Acknowledgments
+
+- [Semantic Scholar](https://www.semanticscholar.org/) - Academic paper search API
+- [impact_factor](https://github.com/suqingdong/impact_factor) - Journal impact factor and quartile lookup
+- [CrossRef](https://www.crossref.org/) - DOI metadata API (fallback)
+
 ## License
 
 MIT
