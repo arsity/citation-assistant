@@ -101,36 +101,53 @@ pip install python-dotenv requests impact_factor
 
 ### Step 3: Semantic Scholar API 检索
 
-使用 `scripts/s2_search.py` 调用 API：
+**重要：使用 CLI 工具**（避免模块导入错误）：
 
-```python
-# 优先使用带 fallback 的搜索函数
-from scripts.s2_search import search_with_fallback, search_papers, get_author_info, batch_get_authors
+```bash
+# 技能目录
+SKILL_DIR="$HOME/.claude/skills/citation-assistant"
 
-# 推荐：带自动 fallback 的搜索
-results = search_with_fallback(
-    query=semantic_query,
-    limit=20,
-    year_range="2018-"  # 可选：限制年份
-)
+# 搜索文献（返回带质量排序的 Top 5）
+python3 "$SKILL_DIR/cli.py" search "attention mechanism transformer" --top 5
 
-# 或者直接使用 S2 API（无 fallback）
-results = search_papers(
-    query=semantic_query,
-    limit=20,
-    year_range="2018-"
-)
+# 搜索近年文献
+python3 "$SKILL_DIR/cli.py" search "LLM irrelevant context" --year "2020-" --top 3
 
-# 获取作者信息（h-index, 论文数等）
-author_info = batch_get_authors(author_ids, fields=["name", "hIndex", "citationCount", "paperCount"])
+# 检查 API Key 配置状态
+python3 "$SKILL_DIR/cli.py" check-key
+
+# 查询期刊/会议信息
+python3 "$SKILL_DIR/cli.py" venue "TMI"
+python3 "$SKILL_DIR/cli.py" venue "ICML"
+
+# 获取 BibTeX
+python3 "$SKILL_DIR/cli.py" bibtex "10.1000/xyz123"
 ```
 
-**重要**：优先使用 `search_with_fallback()` 而非 `search_papers()`，它会自动处理：
-- 速率限制（429 错误）时自动重试
-- S2 API 不可用时自动 fallback 到 CrossRef
-- 返回结果中包含 `source` 字段标识数据来源
+**CLI 命令参考**：
 
-优先使用Semantic Scholar API而非tavily/web search来检索相关文献
+| 命令 | 用途 | 示例 |
+|------|------|------|
+| `search` | 搜索文献 | `python3 cli.py search "query" --top 5 --year "2020-"` |
+| `quality` | 评估单篇论文质量 | `python3 cli.py quality '{"title":"..."}'` |
+| `bibtex` | 通过 DOI 获取 BibTeX | `python3 cli.py bibtex "10.xxx/yyy"` |
+| `venue` | 查询期刊/会议 CCF/IF | `python3 cli.py venue "TMI"` |
+| `check-key` | 检查 API Key 状态 | `python3 cli.py check-key` |
+
+**搜索参数**：
+- `--limit N`: 返回 N 条结果（默认 20）
+- `--top N`: 只返回排序后的前 N 篇（带完整质量报告）
+- `--year RANGE`: 年份范围，如 `"2020-"` 或 `"2018-2024"`
+
+**返回字段**：title, authors, year, venue, citationCount, journal, externalIds, DOI, publicationDate, quality_score, ccf_rank, jcr_quartile 等
+
+**重要特性**：
+- 自动处理速率限制（429 错误）并重试
+- S2 API 不可用时自动 fallback 到 CrossRef
+- 自动加载 `.env` 中的 API Key
+- 返回 JSON 格式，易于解析
+
+优先使用 Semantic Scholar API 而非 tavily/web search 来检索相关文献
 
 **返回字段**：title, authors, year, venue, citationCount, journal, externalIds, DOI, publicationDate
 
@@ -157,22 +174,20 @@ author_info = batch_get_authors(author_ids, fields=["name", "hIndex", "citationC
 
 ### Step 4: 多维度质量排序
 
-使用 `scripts/quality_ranker.py` 进行评估。详见 `references/quality_metrics.md`。
+使用 CLI 工具的 `search --top N` 参数会自动进行质量排序。如需单独评估：
 
-**重要：使用便捷函数**（避免动态生成代码导致错误）：
-
-```python
-from scripts.quality_ranker import get_paper_quality_report, batch_quality_report
-
-# 单篇论文质量报告
-report = get_paper_quality_report(paper_dict)
-# 返回: {"title", "year", "venue", "citation_count", "ccf_rank", "jcr_quartile",
-#        "cas_quartile", "impact_factor", "quality_score", ...}
-
-# 批量论文质量报告（自动排序）
-reports = batch_quality_report(papers_list, top_n=5)
-# 返回排序后的前5篇报告列表
+```bash
+# 评估单篇论文质量
+python3 "$SKILL_DIR/cli.py" quality '{"title":"...", "venue":"ICML", "year":2023, "citationCount":100}'
 ```
+
+**质量报告字段**：
+- `quality_score`: 综合得分
+- `ccf_rank`: CCF 分级 (A/B/C)
+- `jcr_quartile`: JCR 分区 (Q1-Q4)
+- `cas_quartile`: 中科院分区 (1-4区)
+- `impact_factor`: 影响因子
+- `citation_count`: 引用量
 
 **评分维度**：
 1. **CCF 分级** (A=100, B=70, C=40) - 计算机/CS 领域
@@ -190,15 +205,16 @@ reports = batch_quality_report(papers_list, top_n=5)
 
 ### Step 5: BibTeX 生成
 
-使用 `scripts/doi_to_bibtex.py` 通过 DOI 内容协商获取：
+使用 CLI 工具获取 BibTeX：
 
 ```bash
-curl -LH "Accept: text/bibliography; style=bibtex" https://doi.org/{DOI}
+# 通过 DOI 获取 BibTeX
+python3 "$SKILL_DIR/cli.py" bibtex "10.1000/xyz123"
 ```
 
 **处理流程**：
-1. 从 Semantic Scholar 结果获取 DOI
-2. 调用 DOI API 获取标准 BibTeX
+1. 从搜索结果获取 DOI（在 `externalIds.DOI` 字段）
+2. 调用 CLI 获取标准 BibTeX
 3. 处理 cite key 冲突
 4. 合并到用户的 .bib 文件
 
@@ -350,30 +366,37 @@ Vision-language models now generate radiologist-quality reports [CITE]."
 
 ## 脚本参考
 
+### CLI 工具（推荐）
+
+| 命令 | 功能 | 示例 |
+|------|------|------|
+| `cli.py search` | 搜索文献 + 质量排序 | `python3 cli.py search "query" --top 5` |
+| `cli.py quality` | 评估单篇论文质量 | `python3 cli.py quality '{"title":"..."}'` |
+| `cli.py bibtex` | 通过 DOI 获取 BibTeX | `python3 cli.py bibtex "10.xxx/yyy"` |
+| `cli.py venue` | 查询期刊/会议信息 | `python3 cli.py venue "TMI"` |
+| `cli.py check-key` | 检查 API Key 状态 | `python3 cli.py check-key` |
+
+### 底层脚本（高级用法）
+
 | 脚本 | 功能 | 主要函数 |
 |------|------|----------|
-| `s2_search.py` | Semantic Scholar API | `search_with_fallback()`, `search_papers()`, `get_author_info()`, `batch_get_authors()` |
-| `doi_to_bibtex.py` | DOI 转 BibTeX | `doi_to_bibtex()`, `generate_cite_key()` |
-| `quality_ranker.py` | 质量评估排序 | `get_paper_quality_report()`, `batch_quality_report()`, `rank_papers()` |
+| `s2_search.py` | Semantic Scholar API | `search_with_fallback()`, `search_papers()` |
+| `doi_to_bibtex.py` | DOI 转 BibTeX | `doi_to_bibtex()` |
+| `quality_ranker.py` | 质量评估排序 | `batch_quality_report()` |
 | `tex_parser.py` | LaTeX 占位符解析 | `extract_cite_placeholders()` |
 
-**推荐调用模式**：
-```python
-from scripts.s2_search import search_with_fallback
-from scripts.quality_ranker import batch_quality_report
-from scripts.doi_to_bibtex import doi_to_bibtex
+**推荐调用模式**（使用 CLI）：
+```bash
+SKILL_DIR="$HOME/.claude/skills/citation-assistant"
 
-# 1. 搜索
-results = search_with_fallback(query, limit=20)
-papers = results.get("data", [])
+# 1. 搜索并获取 Top 3 推荐
+python3 "$SKILL_DIR/cli.py" search "attention mechanism transformer" --top 3
 
-# 2. 质量评估（自动排序）
-reports = batch_quality_report(papers, top_n=3)
+# 2. 获取 BibTeX
+python3 "$SKILL_DIR/cli.py" bibtex "10.1000/xyz123"
 
-# 3. 获取 BibTeX
-for r in reports:
-    if r.get("doi"):
-        bibtex = doi_to_bibtex(r["doi"])
+# 3. 查询期刊信息
+python3 "$SKILL_DIR/cli.py" venue "TMI"
 ```
 
 ## 注意事项
