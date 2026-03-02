@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "citation-assistant",
+  "description": "Academic citation assistant marketplace for LaTeX workflows",
+  "owner": {
+    "name": "ZhangNy301"
+  },
+  "plugins": [
+    {
+      "name": "citation-assistant",
+      "description": "学术文献引用助手：Semantic Scholar 语义检索、CCF/JCR/IF 多维质量评估、BibTeX 生成、中文推荐报告",
+      "author": {
+        "name": "ZhangNy301"
+      },
+      "source": "./claude-code-plugin",
+      "category": "productivity",
+      "homepage": "https://github.com/ZhangNy301/citation-assistant"
+    }
+  ]
+}
