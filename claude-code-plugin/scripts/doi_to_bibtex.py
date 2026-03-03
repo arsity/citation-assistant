@@ -2,11 +2,24 @@
 """
 DOI 内容协商 API 封装
 用于从 DOI 获取标准 BibTeX 格式
+
+BibTeX 获取优先级：
+1. DBLP（人工审核，CS/AI 领域最权威）
+2. DOI 内容协商（CrossRef/DataCite fallback）
 """
 
 import requests
 import re
 from typing import Optional, Dict, Any
+
+# 条件导入 DBLP 模块，不可用时原有功能不受影响
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+try:
+    from dblp_search import get_bibtex_by_title, get_dblp_bibtex
+except ImportError:
+    get_bibtex_by_title = None
+    get_dblp_bibtex = None
 
 
 def doi_to_bibtex(doi: str) -> Optional[str]:
@@ -142,14 +155,65 @@ def clean_bibtex(bibtex: str) -> str:
     return bibtex
 
 
+def doi_to_bibtex_enhanced(
+    doi: Optional[str] = None,
+    title: Optional[str] = None,
+    dblp_key: Optional[str] = None
+) -> Optional[str]:
+    """
+    增强版 BibTeX 获取，优先使用 DBLP 人工审核来源。
+
+    优先级：
+    1. 有 dblp_key → 直接获取 DBLP BibTeX
+    2. 有 title → 按标题查 DBLP BibTeX
+    3. 有 doi → DOI 内容协商（原有 fallback）
+
+    Args:
+        doi: DOI 字符串
+        title: 论文标题（用于 DBLP 标题查找）
+        dblp_key: DBLP key（如 "conf/nips/VaswaniSPUJGKP17"）
+
+    Returns:
+        BibTeX 字符串，全部失败返回 None
+    """
+    # 1. DBLP key 直接获取
+    if dblp_key and get_dblp_bibtex:
+        bib = get_dblp_bibtex(dblp_key)
+        if bib:
+            return bib
+
+    # 2. 按标题查 DBLP
+    if title and get_bibtex_by_title:
+        bib = get_bibtex_by_title(title)
+        if bib:
+            return bib
+
+    # 3. DOI 内容协商 fallback
+    if doi:
+        return doi_to_bibtex(doi)
+
+    return None
+
+
 if __name__ == "__main__":
-    # 测试
+    # 测试 DOI 内容协商
     test_doi = "10.18653/v1/2020.acl-main.447"
     bibtex = doi_to_bibtex(test_doi)
     if bibtex:
-        print("=== BibTeX ===")
+        print("=== BibTeX (DOI) ===")
         print(bibtex)
         print("\n=== Cite Key ===")
         print(generate_cite_key(bibtex))
     else:
         print(f"Failed to get BibTeX for DOI: {test_doi}")
+
+    # 测试 DBLP 增强版
+    print("\n=== BibTeX Enhanced (DBLP priority) ===")
+    enhanced = doi_to_bibtex_enhanced(
+        doi=test_doi,
+        title="Don't Stop Pretraining: Adapt Language Models to Domains and Tasks"
+    )
+    if enhanced:
+        print(enhanced)
+    else:
+        print("Enhanced lookup also failed")

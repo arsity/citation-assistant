@@ -76,8 +76,15 @@ description: |
 
 ### Step 5: BibTeX 生成
 
-调用 `/citation:bibtex` Command：
-- 通过 DOI 内容协商获取标准 BibTeX
+**优先使用 DBLP BibTeX**（CS/AI 领域人工审核，最权威）：
+
+1. 如果论文有 DBLP Key → 直接从 DBLP 获取 BibTeX（`/citation:dblp`）
+2. 如果有论文标题 → 用标题在 DBLP 搜索匹配 → 获取 BibTeX
+3. Fallback：调用 `/citation:bibtex` 通过 DOI 内容协商获取
+
+Python 脚本层面，`doi_to_bibtex_enhanced(doi, title, dblp_key)` 已封装上述优先级逻辑。
+
+生成后处理：
 - 处理 cite key 冲突
 - 返回格式化 BibTeX 条目
 
@@ -137,6 +144,7 @@ description: |
 | `/citation:bibtex` | BibTeX 生成 | 通过 DOI 获取引用格式 |
 | `/citation:venue-info` | 期刊信息 | 查询特定期刊的 CCF/IF 等级 |
 | `/citation:crossref` | CrossRef 搜索 | S2 API 不可时的 fallback |
+| `/citation:dblp` | DBLP 搜索 | CS 领域权威 BibTeX 来源 |
 | `/citation:parse` | 解析占位符 | 提取 [CITE] 上下文 |
 
 ## 注意事项
@@ -146,6 +154,7 @@ description: |
 3. **质量把关**：综合多维度指标，不唯引用量论
 4. **arXiv 审慎**：期刊投稿应控制 arXiv 引用比例
 5. **API 限制**：Semantic Scholar 免费版有限率，批量查询需注意
+6. **DBLP BibTeX 优先**：CS/AI 论文的 BibTeX 优先从 DBLP 获取（人工审核），DOI 内容协商作为 fallback
 
 ## 配置说明
 
@@ -153,3 +162,4 @@ description: |
 - `/citation:search`
 - `/citation:evaluate`
 - `/citation:bibtex`
+- `/citation:dblp`

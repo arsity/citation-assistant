@@ -58,3 +58,4 @@ print(bibtex)
 - DOI 可以是完整 URL (https://doi.org/...) 或纯 DOI 字符串
 - 内容协商 API 由 CrossRef/DataCite 提供
 - 部分 DOI 可能返回空或格式不规范，可尝试访问 https://doi.org/xxx 手动获取
+- **CS/AI 领域推荐优先使用 DBLP BibTeX**（`/citation:dblp`），DBLP 的 BibTeX 经人工审核，质量更高。本命令作为 DBLP 无法覆盖时的 fallback
